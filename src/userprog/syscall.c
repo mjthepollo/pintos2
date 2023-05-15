@@ -25,7 +25,7 @@ syscall_handler (struct intr_frame *f UNUSED)
 
   	switch (system_call){
       case SYS_HALT:
-          printf ("SYS HALT!\n");
+          // printf ("SYS HALT!\n");
 		      shutdown_power_off();
 		      break;
 
@@ -37,20 +37,20 @@ syscall_handler (struct intr_frame *f UNUSED)
     		break;
 
     	case SYS_EXEC:
-        printf ("SYS EXEC! FILE_NAME: %s\n", *(p+1));
-    		hex_dump(*(p+1),*(p+1),64,true);
+        // printf ("SYS EXEC! FILE_NAME: %s\n", *(p+1));
+    		// hex_dump(*(p+1),*(p+1),64,true);
     		check_addr(*(p+1));
     		f->eax = process_execute(*(p+1));
     		break;
 
     	case SYS_CREATE:
-        printf ("SYS CREATE! NAME: %s, SIZE : %d\n", *(p+1), *(p+2));
+        // printf ("SYS CREATE! NAME: %s, SIZE : %d\n", *(p+1), *(p+2));
     		check_addr(*(p+1));
     		f->eax = filesys_create(*(p+1),*(p+2));
     		break;
 
     	case SYS_REMOVE:
-        printf ("SYS REMOVE! NAME: %s\n", *(p+1));
+        // printf ("SYS REMOVE! NAME: %s\n", *(p+1));
     		check_addr(*(p+1));
     		if(filesys_remove(*(p+1))==NULL)
     			f->eax = false;
@@ -59,7 +59,7 @@ syscall_handler (struct intr_frame *f UNUSED)
     		break;
 
     	case SYS_OPEN:
-        printf ("SYS OPEN! NAME: %s\n", *(p+1));
+        // printf ("SYS OPEN! NAME: %s\n", *(p+1));
     		check_addr(*(p+1));
     		struct file* fptr = filesys_open (*(p+1));
     		if(fptr==NULL)
@@ -76,12 +76,12 @@ syscall_handler (struct intr_frame *f UNUSED)
     		break;
 
     	case SYS_FILESIZE:
-        printf ("SYS FILESIZE!\n");
+        // printf ("SYS FILESIZE!\n");
     		f->eax = file_length (list_search(&thread_current()->files, *(p+1))->ptr);
     		break;
 
     	case SYS_READ:
-        printf ("SYS READ! FD: %d\n, Buffer:%s, SIZE: %d\n", *(p+1), *(p+2), *(p+3));
+        // printf ("SYS READ! FD: %d\n, Buffer:%s, SIZE: %d\n", *(p+1), *(p+2), *(p+3));
     		check_addr(*(p+2));
     		if(*(p+1)==0)
     		{
@@ -102,7 +102,7 @@ syscall_handler (struct intr_frame *f UNUSED)
 
     	case SYS_WRITE:
         // printf ("SYS WRITE! FD: %d, Buffer:%s, SIZE: %d\n", *(p+1), *(p+2), *(p+3));
-        check_addr(*(p+2));
+        // check_addr(*(p+2));
     		if(*(p+1)==1)
     		{
     			putbuf(*(p+2),*(p+3));
@@ -120,7 +120,7 @@ syscall_handler (struct intr_frame *f UNUSED)
     		break;
 
     	case SYS_CLOSE:
-        printf("SYS CLOSE! FD: %d\n", *(p+1));
+        // printf("SYS CLOSE! FD: %d\n", *(p+1));
     		close_file(&thread_current()->files,*(p+1));
     		break;
 
