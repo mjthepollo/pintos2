@@ -138,6 +138,7 @@ syscall_handler (struct intr_frame *f UNUSED)
 
     	case SYS_OPEN:
         // printf ("SYS OPEN! NAME: %s\n", *(esp+1));
+        check_addr(arg1);
         *eax = open(arg1);
     		break;
 
