@@ -8,17 +8,14 @@
 
 
 /********************UTILITY FUNCTIONS**********************/
-void* check_vaddr(const void *vaddr){
+void check_vaddr(const void *vaddr){
 	if (!is_user_vaddr(vaddr)){
     exit(-1);
-		return NULL;
   }
 	void *page = pagedir_get_page(thread_current()->pagedir, vaddr);
 	if (!page){
 		exit(-1);
-		return NULL;
 	}
-	return page;
 }
 
 struct list_elem* pfile_list_elem_search(struct list* files, int fd){
@@ -185,14 +182,13 @@ syscall_handler (struct intr_frame *f UNUSED)
 
     // printf("system CALL!\n");
     int* esp = f->esp;
+    check_vaddr(esp);
     int* arg1 = *(esp+1);
     int* arg2 = *(esp+2);
     int* arg3 = *(esp+3);
     int system_call = *esp;
     uint32_t* eax = &(f->eax);
     int i;
-
-    check_vaddr(esp);
 
   	switch (system_call){
       case SYS_HALT:
@@ -202,6 +198,7 @@ syscall_handler (struct intr_frame *f UNUSED)
 
       case SYS_EXIT:
         // printf ("SYS EXIT!, EXIT_CODE: %d\n", *(esp+1));
+        check_vaddr(esp+1);// for sc-bar-arg only
     		exit(arg1);
     		break;
 
@@ -245,6 +242,7 @@ syscall_handler (struct intr_frame *f UNUSED)
     	case SYS_READ:
         // printf ("SYS READ! FD: %d\n, Buffer:%s, SIZE: %d\n", *(esp+1), *(esp+2), *(esp+3));
         // LOCK_FILE();
+				check_vaddr(esp+2);// for bad read
         *eax = read(arg1,arg2,arg3);
         // RELEASE_FILE();
         break;
@@ -253,6 +251,7 @@ syscall_handler (struct intr_frame *f UNUSED)
         // printf ("SYS WRITE! FD: %d, Buffer:%s, SIZE: %d\n", *(esp+1), *(esp+2), *(esp+3));
         // check_vaddr(*(esp+2));
         // LOCK_FILE();
+				check_vaddr(esp+2);// for bad write
     		*eax = write(arg1,arg2,arg3);
         // RELEASE_FILE();
         // printf("SYS_WRITE_FINISHED\n");
