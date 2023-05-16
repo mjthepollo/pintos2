@@ -1,4 +1,5 @@
 #include "threads/thread.h"
+#include "threads/synch.h"
 
 #ifndef USERPROG_SYSCALL_H
 #define USERPROG_SYSCALL_H
@@ -27,7 +28,7 @@ struct process_file {
 
 void syscall_init (void);
 
-void* check_addr(const void*);
+void* check_vaddr(const void*);
 struct list* list_serarch(struct list* files, int fd);
 struct process_file* pfile_search(struct list* files, int fd);
 void close_all_files(struct list* files);

@@ -8,7 +8,7 @@
 
 
 /********************UTILITY FUNCTIONS**********************/
-void* check_addr(const void *vaddr){
+void* check_vaddr(const void *vaddr){
 	if (!is_user_vaddr(vaddr)){
     exit(-1);
 		return NULL;
@@ -69,40 +69,56 @@ void exit (int status) {
 }
 
 pid_t exec (const char *file){
+  check_vaddr(file);
   return process_execute(file);
 }
 
 int wait (pid_t pid){
-  return 1;
+  return process_wait(pid);
 }
 
 bool create (const char *file, unsigned initial_size){
-  return filesys_create(file,initial_size);
+  check_vaddr(file);
+  LOCK_FILE();
+  bool return_value =  filesys_create(file,initial_size);
+  RELEASE_FILE();
+  return return_value;
 }
 
 bool remove (const char *file){
-   return filesys_remove(file);
+  check_vaddr(file);
+  LOCK_FILE();
+  bool return_value =  filesys_remove(file);
+  RELEASE_FILE();
+  return return_value;
 }
 
 int open (const char *file){
+  check_vaddr(file);
+  LOCK_FILE();
   struct file* fptr = filesys_open(file);
+  RELEASE_FILE();
+
   if(fptr==NULL)
     return -1;
 
   struct process_file *pfile = malloc(sizeof(*pfile));
   pfile->f = fptr;
-  pfile->fd = thread_current()->fd_count;
-  thread_current()->fd_count++;
+  pfile->fd = thread_current()->fd_count++; // BASIC fd is 2
   list_push_back (&thread_current()->files, &pfile->elem);
   return pfile->fd;
 }
 
 int filesize (int fd){
-  return file_length (pfile_search(&thread_current()->files, fd)->f);
+  LOCK_FILE();
+  int return_value =  file_length (pfile_search(&thread_current()->files, fd)->f);
+  RELEASE_FILE();
+  return return_value;
 }
 
 int read (int fd, void *buffer, unsigned length){
-  if(fd==0){
+  check_vaddr(buffer);
+  if(fd==STDIN_FILENO){
     char* casted_buffer = buffer;
     int i;
     for(i=0;i<length;i++)
@@ -111,25 +127,42 @@ int read (int fd, void *buffer, unsigned length){
   }
   else{
     struct process_file* pfile = pfile_search(&thread_current()->files, fd);
-    return pfile==NULL ? -1 : file_read_at (pfile->f, buffer, length,0);
+    LOCK_FILE();
+    int return_value =  pfile==NULL ? -1 : file_read_at (pfile->f, buffer, length,0);
+    RELEASE_FILE();
+    return return_value;
   }
 }
 
 int write (int fd, const void *buffer, unsigned length){
-  if(fd == 1){
+  check_vaddr(buffer);
+  if(fd == STDOUT_FILENO){
+    if (length>250)
+      exit(-1);
     putbuf(buffer,length);
     return length;
   }else{
     struct process_file* pfile = pfile_search(&thread_current()->files, fd);
-    return pfile==NULL ? -1 : file_write_at (pfile->f, buffer, length,0);
+    LOCK_FILE();
+    int return_value =  pfile==NULL ? -1 : file_write_at (pfile->f, buffer, length,0);
+    RELEASE_FILE();
+    return return_value;
   }
 }
 
 void seek (int fd, unsigned position){
+  struct process_file* pfile = pfile_search(&thread_current()->files, fd);
+  LOCK_FILE();
+  file_seek(pfile->f, position);
+  RELEASE_FILE();
 }
 
 unsigned tell (int fd){
-  return fd;
+  struct process_file* pfile = pfile_search(&thread_current()->files, fd);
+  LOCK_FILE();
+  unsigned return_value =  file_tell(pfile->f);
+  RELEASE_FILE();
+  return return_value;
 }
 
 void close (int fd){
@@ -159,6 +192,8 @@ syscall_handler (struct intr_frame *f UNUSED)
     uint32_t* eax = &(f->eax);
     int i;
 
+    check_vaddr(esp);
+
   	switch (system_call){
       case SYS_HALT:
         // printf ("SYS HALT!\n");
@@ -175,46 +210,75 @@ syscall_handler (struct intr_frame *f UNUSED)
     		*eax = exec(arg1);
     		break;
 
+      case SYS_WAIT:
+        *eax = wait(arg1);
+        break;
+
     	case SYS_CREATE:
         // printf ("SYS CREATE! NAME: %s, SIZE : %d\n", *(esp+1), *(esp+2));
+        // LOCK_FILE();
     		*eax = create(arg1,arg2);
+        // RELEASE_FILE();
     		break;
 
     	case SYS_REMOVE:
         // printf ("SYS REMOVE! NAME: %s\n", *(esp+1));
+        // LOCK_FILE();
     		*eax = remove(arg1);
+        // RELEASE_FILE();
     		break;
 
     	case SYS_OPEN:
         // printf ("SYS OPEN! NAME: %s\n", *(esp+1));
-        check_addr(arg1);
+        // LOCK_FILE();
         *eax = open(arg1);
+        // RELEASE_FILE();
     		break;
 
     	case SYS_FILESIZE:
         // printf ("SYS FILESIZE!\n");
+        // LOCK_FILE();
     		*eax = filesize(arg1);
+        // RELEASE_FILE();
     		break;
 
     	case SYS_READ:
         // printf ("SYS READ! FD: %d\n, Buffer:%s, SIZE: %d\n", *(esp+1), *(esp+2), *(esp+3));
+        // LOCK_FILE();
         *eax = read(arg1,arg2,arg3);
+        // RELEASE_FILE();
         break;
 
     	case SYS_WRITE:
         // printf ("SYS WRITE! FD: %d, Buffer:%s, SIZE: %d\n", *(esp+1), *(esp+2), *(esp+3));
-        // check_addr(*(esp+2));
+        // check_vaddr(*(esp+2));
+        // LOCK_FILE();
     		*eax = write(arg1,arg2,arg3);
+        // RELEASE_FILE();
         // printf("SYS_WRITE_FINISHED\n");
     		break;
 
+      case SYS_SEEK:
+        // LOCK_FILE();
+        seek(arg1, arg2);
+        // RELEASE_FILE();
+        break;
+
+      case SYS_TELL:
+        // LOCK_FILE();
+        *eax = tell(arg1);
+        // RELEASE_FILE();
+        break;
+
     	case SYS_CLOSE:
         // printf("SYS CLOSE! FD: %d\n", *(esp+1));
+        // LOCK_FILE();
     		close(arg1);
+        // RELEASE_FILE();
     		break;
 
     	default:
-    		printf("No match\n");
+    		printf("!!!!!NO MATCHING SYSTEM CALL ERROR!!!!!\n");
     		printf("%d\n",*esp);
     }
 }

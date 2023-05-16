@@ -20,6 +20,16 @@
    of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
+//Lock for syscall.c
+struct lock file_lock;
+void LOCK_FILE(){
+  lock_acquire(&file_lock);
+}
+
+void RELEASE_FILE(){
+  lock_release(&file_lock);
+}
+
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
@@ -93,6 +103,7 @@ thread_init (void)
   list_init (&ready_list);
   list_init (&all_list);
 
+  lock_init(&file_lock);
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
