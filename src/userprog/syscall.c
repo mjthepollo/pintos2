@@ -185,26 +185,26 @@ syscall_handler (struct intr_frame *f UNUSED)
 
 
 
-struct process_file* pfile_search(struct list* files, int fd){
-	struct list_elem *e;
-      for (e = list_begin (files); e != list_end (files);
-           e = list_next (e))
-        {
-          struct process_file *f = list_entry (e, struct process_file, elem);
-          if(f->fd == fd)
-          	return f;
-        }
+struct list_elem* pfile_list_elem_search(struct list* files, int fd){
+  struct list_elem *e;
+  for (e = list_begin (files); e != list_end (files); e = list_next (e)){
+      struct process_file *f = list_entry (e, struct process_file, elem);
+      if(f->fd == fd) return e;
+    }
    return NULL;
+}
+
+struct process_file* pfile_search(struct list* files, int fd){
+	struct list_elem *e = pfile_list_elem_search(files, fd);
+  return e ? list_entry(e, struct process_file, elem) : NULL;
 }
 
 void close_file(struct list* files, int fd){
 	struct list_elem *e;
   for (e = list_begin (files); e != list_end (files);
-       e = list_next (e))
-    {
+       e = list_next (e)){
       struct process_file *f = list_entry (e, struct process_file, elem);
-      if(f->fd == fd)
-      {
+      if(f->fd == fd){
       	file_close(f->ptr);
       	list_remove(e);
       }
