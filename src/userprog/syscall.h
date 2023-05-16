@@ -19,7 +19,7 @@ void seek (int fd, unsigned position);
 unsigned tell (int fd);
 void close (int fd);
 
-struct proc_file {
+struct process_file {
   struct file* ptr;
   int fd;
   struct list_elem elem;
@@ -29,7 +29,8 @@ void syscall_init (void);
 
 void* check_addr(const void*);
 
-struct proc_file* list_search(struct list* files, int fd);
+struct list* list_serarch(struct list* files, int fd);
+struct process_file* pfile_search(struct list* files, int fd);
 
 
 #endif /* userprog/syscall.h */
