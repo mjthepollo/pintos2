@@ -20,7 +20,7 @@ unsigned tell (int fd);
 void close (int fd);
 
 struct process_file {
-  struct file* ptr;
+  struct file* f;
   int fd;
   struct list_elem elem;
 };
@@ -28,9 +28,9 @@ struct process_file {
 void syscall_init (void);
 
 void* check_addr(const void*);
-
 struct list* list_serarch(struct list* files, int fd);
 struct process_file* pfile_search(struct list* files, int fd);
-
+void close_all_files(struct list* files);
+void close_files(struct list* files, int fd);
 
 #endif /* userprog/syscall.h */

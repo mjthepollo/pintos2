@@ -5,19 +5,56 @@
 #include "threads/vaddr.h"
 #include "process.h"
 
+
+
+/********************UTILITY FUNCTIONS**********************/
 void* check_addr(const void *vaddr){
 	if (!is_user_vaddr(vaddr)){
     exit(-1);
-		return 0;
+		return NULL;
   }
 	void *page = pagedir_get_page(thread_current()->pagedir, vaddr);
 	if (!page){
 		exit(-1);
-		return 0;
+		return NULL;
 	}
 	return page;
 }
 
+struct list_elem* pfile_list_elem_search(struct list* files, int fd){
+  struct list_elem *e;
+  for (e = list_begin (files); e != list_end (files); e = list_next (e)){
+      struct process_file *pfile = list_entry (e, struct process_file, elem);
+      if(pfile->fd == fd) return e;
+    }
+   return NULL;
+}
+
+struct process_file* pfile_search(struct list* files, int fd){
+	struct list_elem *e = pfile_list_elem_search(files, fd);
+  return e ? list_entry(e, struct process_file, elem) : NULL;
+}
+
+void close_files(struct list* files, int fd){ // Can close multiple files
+	struct list_elem *e;
+  for (e = list_begin (files); e != list_end (files);e = list_next (e)){
+      struct process_file *pfile = list_entry (e, struct process_file, elem);
+      if(pfile->fd == fd){
+      	file_close(pfile->f);
+      	list_remove(e);
+      }
+    }
+}
+
+void close_all_files(struct list* files){
+	struct list_elem *e;
+  for (e = list_begin (files); e != list_end (files); e = list_next (e)){
+      struct process_file *pfile = list_entry (e, struct process_file, elem);
+    	file_close(pfile->f);
+    	list_remove(e);
+    }
+}
+/********************UTILITY FUNCTIONS FIN**********************/
 
 static void syscall_handler (struct intr_frame *);
 
@@ -53,7 +90,7 @@ int open (const char *file){
     return -1;
 
   struct process_file *pfile = malloc(sizeof(*pfile));
-  pfile->ptr = fptr;
+  pfile->f = fptr;
   pfile->fd = thread_current()->fd_count;
   thread_current()->fd_count++;
   list_push_back (&thread_current()->files, &pfile->elem);
@@ -61,7 +98,7 @@ int open (const char *file){
 }
 
 int filesize (int fd){
-  return file_length (pfile_search(&thread_current()->files, fd)->ptr);
+  return file_length (pfile_search(&thread_current()->files, fd)->f);
 }
 
 int read (int fd, void *buffer, unsigned length){
@@ -73,8 +110,8 @@ int read (int fd, void *buffer, unsigned length){
     return length;
   }
   else{
-    struct process_file* fptr = pfile_search(&thread_current()->files, fd);
-    return fptr==NULL ? -1 : file_read_at (fptr->ptr, buffer, length,0);
+    struct process_file* pfile = pfile_search(&thread_current()->files, fd);
+    return pfile==NULL ? -1 : file_read_at (pfile->f, buffer, length,0);
   }
 }
 
@@ -83,21 +120,20 @@ int write (int fd, const void *buffer, unsigned length){
     putbuf(buffer,length);
     return length;
   }else{
-    struct process_file* fptr = pfile_search(&thread_current()->files, fd);
-    return fptr==NULL ? -1 : file_write_at (fptr->ptr, buffer, length,0);
+    struct process_file* pfile = pfile_search(&thread_current()->files, fd);
+    return pfile==NULL ? -1 : file_write_at (pfile->f, buffer, length,0);
   }
 }
 
 void seek (int fd, unsigned position){
-
 }
 
 unsigned tell (int fd){
-
+  return fd;
 }
 
 void close (int fd){
-  close_file(&thread_current()->files,fd);
+  close_files(&thread_current()->files,fd);
 }
 
 
@@ -181,47 +217,4 @@ syscall_handler (struct intr_frame *f UNUSED)
     		printf("No match\n");
     		printf("%d\n",*esp);
     }
-}
-
-
-
-struct list_elem* pfile_list_elem_search(struct list* files, int fd){
-  struct list_elem *e;
-  for (e = list_begin (files); e != list_end (files); e = list_next (e)){
-      struct process_file *f = list_entry (e, struct process_file, elem);
-      if(f->fd == fd) return e;
-    }
-   return NULL;
-}
-
-struct process_file* pfile_search(struct list* files, int fd){
-	struct list_elem *e = pfile_list_elem_search(files, fd);
-  return e ? list_entry(e, struct process_file, elem) : NULL;
-}
-
-void close_file(struct list* files, int fd){
-	struct list_elem *e;
-  for (e = list_begin (files); e != list_end (files);
-       e = list_next (e)){
-      struct process_file *f = list_entry (e, struct process_file, elem);
-      if(f->fd == fd){
-      	file_close(f->ptr);
-      	list_remove(e);
-      }
-    }
-}
-
-void close_all_files(struct list* files)
-{
-
-	struct list_elem *e;
-
-      for (e = list_begin (files); e != list_end (files);
-           e = list_next (e))
-        {
-          struct process_file *f = list_entry (e, struct process_file, elem);
-
-	      	file_close(f->ptr);
-	      	list_remove(e);
-        }
 }
