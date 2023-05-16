@@ -5,6 +5,19 @@
 #include "threads/vaddr.h"
 #include "process.h"
 
+void* check_addr(const void *vaddr){
+	if (!is_user_vaddr(vaddr)){
+    exit(-1);
+		return 0;
+  }
+	void *page = pagedir_get_page(thread_current()->pagedir, vaddr);
+	if (!page){
+		exit(-1);
+		return 0;
+	}
+	return page;
+}
+
 
 static void syscall_handler (struct intr_frame *);
 
@@ -171,26 +184,6 @@ syscall_handler (struct intr_frame *f UNUSED)
 }
 
 
-
-void* check_addr(const void *vaddr)
-{
-	if (!is_user_vaddr(vaddr))
-	{
-		thread_current()->parent->exit = true;
-		thread_current()->exit_code = -1;
-		thread_exit();
-		return 0;
-	}
-	void *ptr = pagedir_get_page(thread_current()->pagedir, vaddr);
-	if (!ptr)
-	{
-		thread_current()->parent->exit = true;
-		thread_current()->exit_code = -1;
-		thread_exit();
-		return 0;
-	}
-	return ptr;
-}
 
 struct proc_file* list_search(struct list* files, int fd)
 {
